@@ -5,6 +5,9 @@
 
 #include "main.h"
 
+#include "vm.h"
+#include "bmp.h"
+
 #include <cstdio>
 #include <vector>
 
@@ -25,6 +28,20 @@ int main(int argc, char** argv) {
 
     // check arguments
     if (argc < 2) {
+        BITMAPFILEHEADER bfh;
+        BITMAPINFOHEADER bih;
+        int bcode;
+        unsigned long long bdatlen;
+        int_col* buf = read_bmp_file("../data.bmp", &bfh, &bih, &bdatlen, &bcode);
+
+        printf("bfsize: %d, bftype: %d, bfpixoff: %d\n", bfh.bfSize, bfh.bfType, bfh.bfOffBits);
+        printf("data | bdatlen: %d\n", bdatlen);
+        for (int i = 0; i < bdatlen; i++) {
+            int_col col = buf[i];
+            col_rgb rgb = col.rgb;
+            printf("- i: %d, rgb: %d,%d,%d,%d, intf: %d\n", i, rgb.r, rgb.g, rgb.b, rgb.a, col.i);
+        }
+
         print_ma_usage();
         return -1;
     }

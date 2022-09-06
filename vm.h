@@ -14,30 +14,6 @@
 // include opcodes from file
 #include "opcodes.h"
 
-typedef char byte;
-
-/*
- * The program data is stored in raw color form, using the
- * <long_col> union. This makes sure we can access the color
- * and number without any bit magic.
- */
-
-// color
-struct color {
-    byte r;
-    byte g;
-    byte b;
-    byte a;
-};
-
-union long_col {
-    // the color value
-    color col;
-
-    // the integer value
-    unsigned long long i;
-};
-
 class PicFunction {
 private:
     // the id of this function
@@ -58,7 +34,7 @@ private:
     unsigned int _s;
 
     // the pixel data (program data)
-    long_col* _pixels;
+    int_col* _pixels;
 
 public:
 
@@ -70,10 +46,10 @@ public:
     [[nodiscard]] unsigned int get_height() const;
     [[nodiscard]] unsigned int get_size_1d() const;
 
-    long_col* get_pixels();
+    int_col* get_pixels();
 
-    long_col get_pixel_value(unsigned int i);
-    long_col get_pixel_value(unsigned int x, unsigned int y);
+    int_col get_pixel_value(unsigned int i);
+    int_col get_pixel_value(unsigned int x, unsigned int y);
 
 };
 
@@ -83,7 +59,7 @@ public:
  * using a simple byte aligned heap implementation
  * for long term variable storage.
  *
- * When a pixel is executed by the VM, that pixels color
+ * When a pixel is executed by the VM, that pixels col_rgb
  * is matched to an instruction, after which that instruction
  * can use the VM features to optionally read more parameters
  * and do its thing.
@@ -161,7 +137,7 @@ public:
     PicVm* set_y(unsigned int y);
 
     void advance_position();
-    long_col get_current_pixel();
+    int_col get_current_pixel();
 
     int run();
 

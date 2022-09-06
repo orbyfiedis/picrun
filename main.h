@@ -7,7 +7,6 @@
 #define PICRUN_MAIN_H
 
 #include "defines.h"
-#include "util.h"
 
 // the main arg struct
 struct MainArgs {

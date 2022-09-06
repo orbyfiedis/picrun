@@ -30,16 +30,16 @@ unsigned long long PicFile::get_id() const {
 }
 
 
-long_col* PicFile::get_pixels(){
+int_col* PicFile::get_pixels(){
     return _pixels;
 }
 
 
-long_col PicFile::get_pixel_value(unsigned int i) {
+int_col PicFile::get_pixel_value(unsigned int i) {
     return _pixels[i];
 }
 
-long_col PicFile::get_pixel_value(unsigned int x, unsigned int y){
+int_col PicFile::get_pixel_value(unsigned int x, unsigned int y){
     return get_pixel_value(flatten(x, y));
 }
 
@@ -170,7 +170,7 @@ void PicVm::advance_position() {
     }
 }
 
-long_col PicVm::get_current_pixel() {
+int_col PicVm::get_current_pixel() {
     return _file->get_pixel_value(_x, _y);
 }
 
@@ -198,7 +198,7 @@ int PicVm::run() {
         // advance a position
         // and get pixel data
         advance_position();
-        long_col pix = get_current_pixel();
+        int_col pix = get_current_pixel();
 
         // match instruction
         switch (pix.i) {
@@ -211,6 +211,7 @@ int PicVm::run() {
             // op - exit
             case OP_EXIT:
                 exitwc(VM_EXIT_OK);
+                break;
 
         }
     }
