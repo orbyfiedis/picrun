@@ -6,10 +6,16 @@
 #include "main.h"
 
 #include <cstdio>
-#include <iostream>
 #include <vector>
 
 struct MainArgs* pr_main_args;
+
+void print_ma_usage() {
+    pr_printheader();
+    printf("Missing arguments.\n");
+    printf("Usage: picrun <file> [--workdir <dir>]\n");
+    printf("\n");
+}
 
 // main entry point
 // it sucks
@@ -17,14 +23,9 @@ int main(int argc, char** argv) {
     // get binary path
     char* bin_path = argv[0];
 
-    printf("%s\n",bin_path );
-
     // check arguments
     if (argc < 2) {
-        pr_printheader();
-        printf("Missing arguments.\n");
-        printf("Usage: picrun <file> [--workdir <dir>]\n");
-        printf("\n");
+        print_ma_usage();
         return -1;
     }
 
@@ -63,7 +64,12 @@ int main(int argc, char** argv) {
         }
     }
 
-    // set missing directories
+    // set missing properties
+    if (positioned_args.empty()) {
+        print_ma_usage();
+        return -1;
+    }
+
     pr_main_args->entry_file = positioned_args[0].c_str();
     if (pr_main_args->work_dir == nullptr)
         pr_main_args->work_dir = ".";
