@@ -62,13 +62,22 @@ int main(int argc, char** argv) {
         //
 
         buf = (int_col*) calloc(100, sizeof(int_col));
-        buf[0] = t(OP_PUSH_STRING);
-        buf[1] = t_pack_chars("hell");
-        buf[2] = t_pack_chars("o wo");
-        buf[3] = t_pack_chars("rld!");
-        buf[4] = t(0);
-        buf[5] = t(OP_PRINT);
-        buf[6] = t(OP_EXIT);
+//        buf[0] = t(OP_PUSH_STRING);
+//        buf[1] = t_pack_chars("hell");
+//        buf[2] = t_pack_chars("o wo");
+//        buf[3] = t_pack_chars("rld!");
+//        buf[4] = t(0);
+//        buf[5] = t(OP_PRINT);
+//        buf[6] = t(OP_EXIT);
+
+        buf[0] = t(OP_PUSH_INT);
+        buf[1] = t(696969);
+        buf[2] = t(OP_PUSH_INT);
+        buf[3] = t(420);
+        buf[4] = t(OP_A_ADD);
+        buf[5] = t(OP_PTOSTR);
+        buf[6] = t(OP_PRINT);
+        buf[7] = t(OP_EXIT);
 
         // create file
         PicFile* file = load_pic_file(10, 10, buf);

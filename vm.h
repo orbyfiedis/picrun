@@ -64,34 +64,68 @@ PicFile* load_pic_file(unsigned int w, unsigned int h, int_col* pixels);
  * and do its thing.
  */
 
+// vm stack value types
+constexpr unsigned char ST_NIL    = 0x00;
+
+constexpr unsigned char ST_BYTE    = 0x01; // byte
+constexpr unsigned char ST_SHORT   = 0x02; // short (16 bit int)
+constexpr unsigned char ST_INT     = 0x03; // int (32 bit int)
+constexpr unsigned char ST_LONG    = 0x04; // long (64 bit int)
+constexpr unsigned char ST_FLOAT   = 0x05; // float (32 bit float)
+constexpr unsigned char ST_DOUBLE  = 0x06; // double (64 bit float)
+constexpr unsigned char ST_EXTERN  = 0x07; // external pointer (to C++ memory)
+constexpr unsigned char ST_STRING  = 0x08; // string pointer (with length)
+
+// to long cast
+#define tl_c(f) (long long) f
+// to long with pointer
+#define tl_p(f) *(long long*) &f
+// to long static cast
+#define tl_s(f) static_cast<long long>(f)
+
+// a vm stack value
+struct VmStackVal {
+    // the type of the value
+    unsigned char type;
+    // the data
+    long long value;
+};
+
+// typeless null constant
+#define is_nil(val) val.type == ST_NIL
+static const VmStackVal NIL_VALUE = {ST_NIL, 0 };
+
+// type conversions
+VmStackVal pcast_val(VmStackVal val, unsigned char type);
+
 // vm data stack
 class VmDataStack {
 private:
     // the data stored in the stack
-    long long* _data = nullptr;
+    VmStackVal* _data = nullptr;
     // the index of the top of the stack
-    unsigned int _top = 0;
+    int _top = -1;
     // the size of the currently allocated block
     unsigned int _alloc = 0;
 
 public:
 
-    long long* get_data();
-    unsigned int get_top_pointer();
+    VmStackVal* get_data();
+    int get_top_pointer();
     unsigned int get_allocated();
 
-    void push(long long data);
-    inline void push_ptr(void* ptr);
-    inline void push_str(char* str);
+    void push(VmStackVal data);
+    inline void push_extern_ptr(void* ptr);
+    inline void push_str(std::string* str);
     inline void push_long(long long l);
     inline void push_int(int i);
     inline void push_float(float f);
     inline void push_double(double d);
 
-    long long pop();
-    long long peek();
+    VmStackVal pop();
+    VmStackVal peek();
     // index format -> negative is from top of stack, positive is from bottom
-    long long at(int idx);
+    VmStackVal at(int idx);
 
     void resize(unsigned int len);
 

@@ -6,9 +6,32 @@
 #include "vm.h"
 
 #include <cmath>
+#include <iostream>
 
 #define m_min(a, b) (a < b ? a : b)
 #define m_max(a, b) (a > b ? a : b)
+
+/*
+ * VmStackVal
+ */
+
+VmStackVal pcast_val(VmStackVal val, unsigned char type) {
+    // switch current type
+    switch (val.type) {
+        case ST_INT:
+        case ST_LONG:
+            switch (type) {
+                case ST_INT:    return { ST_INT, tl_s((int)val.value) };
+                case ST_LONG:   return { ST_LONG, (long long)val.value };
+                case ST_FLOAT:  return { ST_FLOAT, tl_s((float) val.value) };
+                case ST_DOUBLE: return { ST_DOUBLE, tl_s((double) val.value) };
+                case ST_SHORT:  return { ST_SHORT, tl_s((short)val.value) };
+                default: return NIL_VALUE;
+            }
+
+        default: return NIL_VALUE;
+    }
+}
 
 /*
  * PicFile
@@ -58,11 +81,11 @@ int_col PicFile::get_pixel_value(unsigned int x, unsigned int y){
  * VmDataStack
  */
 
-long long* VmDataStack::get_data() {
+VmStackVal* VmDataStack::get_data() {
     return _data;
 }
 
-unsigned int VmDataStack::get_top_pointer() {
+int VmDataStack::get_top_pointer() {
     return _top;
 }
 
@@ -70,42 +93,47 @@ unsigned int VmDataStack::get_allocated() {
     return _alloc;
 }
 
-void VmDataStack::push(long long data) {
+void VmDataStack::push(VmStackVal data) {
     // grow if necessary
-    if (_top += 1 >= _alloc)
+    _top++;
+    if (_top >= _alloc)
         resize((int)(_alloc * 1.5));
 
     // set element
     _data[_top] = data;
 }
 
-inline void VmDataStack::push_ptr(void* ptr) {
-    push((long long)ptr);
+inline void VmDataStack::push_extern_ptr(void* ptr) {
+    push({ ST_EXTERN, (long long)ptr });
 }
 
-inline void VmDataStack::push_str(char* str) {
-    push_ptr((void*)str);
+inline void VmDataStack::push_str(std::string* str) {
+    push({ ST_STRING, tl_c(str) });
 }
 
 inline void VmDataStack::push_long(long long l) {
-    push(l);
+    push({ ST_LONG, l });
 }
 
 inline void VmDataStack::push_int(int i) {
-    push(*(long long*)&i);
+    push({ ST_INT, tl_p(i) });
 }
 
 inline void VmDataStack::push_float(float f) {
-    push_int(*(int*)&f);
+    push({ ST_FLOAT, tl_p(f) });
 }
 
 inline void VmDataStack::push_double(double d) {
-    push_long(*(double*)&d);
+    push({ ST_DOUBLE, tl_p(d) });
 }
 
-long long VmDataStack::pop() {
+VmStackVal VmDataStack::pop() {
+    // check if we have data
+    if (_top == -1)
+        return NIL_VALUE;
+
     // get data
-    long long data = _data[_top];
+    VmStackVal data = _data[_top];
 
     // reduce top
     _top--;
@@ -114,11 +142,11 @@ long long VmDataStack::pop() {
     return data;
 }
 
-long long VmDataStack::peek() {
+VmStackVal VmDataStack::peek() {
     return _data[_top];
 }
 
-long long VmDataStack::at(int idx) {
+VmStackVal VmDataStack::at(int idx) {
     if (idx < 0) {
         // return relative to top
         return _data[_top - idx];
@@ -130,7 +158,7 @@ long long VmDataStack::at(int idx) {
 
 void VmDataStack::resize(unsigned int len) {
     // allocate new data
-    auto* new_data = new long long[len];
+    auto* new_data = new VmStackVal[len];
 
     // copy old data into new buffer
     if (_data != nullptr) {
@@ -231,7 +259,7 @@ VmDataStack* PicVm::get_data_stack() {
     return _data_stack;
 }
 
-static char* O_collect_string(PicVm* vm) {
+static std::string* O_collect_string(PicVm* vm) {
     vm->advance_position();
     // collect length
     std::vector<char>* chars = new std::vector<char>();
@@ -259,18 +287,61 @@ static char* O_collect_string(PicVm* vm) {
 
     chars->push_back('\0');
 
-    return chars->data();
+    return new std::string(chars->data());
 }
 
 static void O_rpush_string(PicVm* vm) {
     vm->_data_stack->push_str(O_collect_string(vm));
 }
 
+static void O_ptostr(PicVm* vm) {
+    // pop value off stack
+    VmStackVal val = vm->_data_stack->pop();
+    // switch type
+    std::string* string;
+    switch (val.type) {
+        case ST_INT:
+            string = new std::string(std::to_string((int)val.value));
+
+        case ST_LONG:
+            string = new std::string(std::to_string((long long)val.value));
+            break;
+
+        default:
+            string = nullptr;
+    }
+
+    // push value to stack
+    vm->_data_stack->push_str(string);
+}
+
 static void O_print(PicVm* vm) {
     // pop string pointer off stack
-    char* str = (char*)vm->_data_stack->pop();
-    printf(str);
-    printf("\n");
+    std::string* str = (std::string*)vm->_data_stack->pop().value;
+    if (str == nullptr)
+        std::cout << "null" << std::endl;
+    std::cout << *str << std::endl;
+}
+
+static void O_a_add(PicVm* vm) {
+    VmDataStack* stack = vm->_data_stack;
+
+    // pop two values
+    VmStackVal a = stack->pop();
+    VmStackVal b = stack->pop();
+
+    if (is_nil(a) || is_nil(b))
+        return;
+
+    // switch type operation
+    switch (a.type) {
+        case ST_INT:
+            stack->push({ ST_INT, (long long) ((int)a.value + pcast_val(b, a.type).value) });
+            break;
+        case ST_LONG:
+            stack->push({ ST_LONG, a.value + pcast_val(b, a.type).value });
+            break;
+    }
 }
 
 /**
@@ -315,8 +386,10 @@ int PicVm::run(char** out_err = nullptr) {
         // get pixel data
         int_col pix = get_current_pixel();
 
+#ifdef _VMDEBUG
         printf("current | x: %d, y: %d, d: %d\n", _x, _y, _dir);
         printf("current | l: %d, r: %d, g: %d, b: %d\n", pix.i, pix.rgb.r, pix.rgb.g, pix.rgb.b);
+#endif
 
         // match instruction
         switch (pix.i) {
@@ -339,6 +412,22 @@ int PicVm::run(char** out_err = nullptr) {
             // op - push string compact
             case OP_PUSH_STRING:
                 O_rpush_string(this);
+                break;
+
+            // op - push int
+            case OP_PUSH_INT:
+                advance_position();
+                _data_stack->push({ ST_INT, get_current_pixel().i });
+                break;
+
+            // op - to string primitive]
+            case OP_PTOSTR:
+                O_ptostr(this);
+                break;
+
+            // op - arithmetic any-type add
+            case OP_A_ADD:
+                O_a_add(this);
                 break;
 
             // unknown op: error

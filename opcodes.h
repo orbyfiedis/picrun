@@ -31,12 +31,18 @@ inline opu t_pack_chars(const char* str) {
  */
 
 constexpr opc OP_EXIT  = 0x00000000;
-constexpr opc OP_PANIC = 0x01010101;
+constexpr opc OP_PANIC = 0x00010101;
 
-constexpr opc OP_PRINT = 0x01020000;
+constexpr opc OP_PRINT  = 0x01020000;
+constexpr opc OP_PTOSTR = 0x01010101;
 
 constexpr opc OP_PUSH_STRING = 0x01030100;
 constexpr opc OP_PUSH_INT    = 0x01030200;
 constexpr opc OP_PUSH_LONG   = 0x01030300;
+
+constexpr opc OP_A_ADD = 0x02010101;
+constexpr opc OP_A_SUB = 0x02010201;
+constexpr opc OP_A_MUL = 0x02010301;
+constexpr opc OP_A_DIV = 0x02010401;
 
 #endif //PICRUN_OPCODES_H
