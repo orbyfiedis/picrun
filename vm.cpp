@@ -5,9 +5,25 @@
 
 #include "vm.h"
 
+#include <cmath>
+
+#define m_min(a, b) (a < b ? a : b)
+#define m_max(a, b) (a > b ? a : b)
+
 /*
  * PicFile
  */
+
+PicFile* load_pic_file(unsigned int w, unsigned int h, int_col* pixels) {
+    return new PicFile(w, h, pixels);
+}
+
+PicFile::PicFile(unsigned int w, unsigned int h, int_col *pixels) {
+    _w = w;
+    _h = h;
+    _s = w * h;
+    _pixels = pixels;
+}
 
 inline unsigned int PicFile::flatten(unsigned int x, unsigned int y) const {
     return y * _w + x;
@@ -24,11 +40,6 @@ unsigned int PicFile::get_height() const {
 unsigned int PicFile::get_size_1d() const {
     return _s;
 }
-
-unsigned long long PicFile::get_id() const {
-    return _id;
-}
-
 
 int_col* PicFile::get_pixels(){
     return _pixels;
@@ -68,6 +79,30 @@ void VmDataStack::push(long long data) {
     _data[_top] = data;
 }
 
+inline void VmDataStack::push_ptr(void* ptr) {
+    push((long long)ptr);
+}
+
+inline void VmDataStack::push_str(char* str) {
+    push_ptr((void*)str);
+}
+
+inline void VmDataStack::push_long(long long l) {
+    push(l);
+}
+
+inline void VmDataStack::push_int(int i) {
+    push(*(long long*)&i);
+}
+
+inline void VmDataStack::push_float(float f) {
+    push_int(*(int*)&f);
+}
+
+inline void VmDataStack::push_double(double d) {
+    push_long(*(double*)&d);
+}
+
 long long VmDataStack::pop() {
     // get data
     long long data = _data[_top];
@@ -84,7 +119,6 @@ long long VmDataStack::peek() {
 }
 
 long long VmDataStack::at(int idx) {
-    // TODO: check bounds
     if (idx < 0) {
         // return relative to top
         return _data[_top - idx];
@@ -95,12 +129,31 @@ long long VmDataStack::at(int idx) {
 }
 
 void VmDataStack::resize(unsigned int len) {
-    // TODO
+    // allocate new data
+    auto* new_data = new long long[len];
+
+    // copy old data into new buffer
+    if (_data != nullptr) {
+        memcpy(_data, new_data, m_min(_top, len) * sizeof(long long));
+    }
+
+    // replace old data
+    this->_alloc = len;
+    _data = new_data;
 }
 
 /*
  * PicVm
  */
+
+PicVm::PicVm() {
+    // allocate and set data stack
+    _data_stack = new VmDataStack();
+    _data_stack->resize(1000);
+
+    // allocate function map
+    _functions = std::unordered_map<unsigned int, PicFunction*>();
+}
 
 std::unordered_map<unsigned int, PicFunction*> PicVm::get_functions() {
     return this->_functions;
@@ -174,38 +227,103 @@ int_col PicVm::get_current_pixel() {
     return _file->get_pixel_value(_x, _y);
 }
 
+VmDataStack* PicVm::get_data_stack() {
+    return _data_stack;
+}
+
+static char* O_collect_string(PicVm* vm) {
+    vm->advance_position();
+    // collect length
+    std::vector<char>* chars = new std::vector<char>();
+    int l = 0;
+    while (true) {
+        bool sbreak = false;
+
+        int_col pix = vm->get_current_pixel();
+        unsigned int pn = pix.i;
+        for (int i = 0; i < 4; i++) {
+            char c = *(char*)(&pn);
+            if (c == 0) {
+                sbreak = true;
+                break;
+            }
+            chars->push_back(c);
+            pn >>= 8;
+        }
+
+        if (sbreak)
+            break;
+
+        vm->advance_position();
+    }
+
+    chars->push_back('\0');
+
+    return chars->data();
+}
+
+static void O_rpush_string(PicVm* vm) {
+    vm->_data_stack->push_str(O_collect_string(vm));
+}
+
+static void O_print(PicVm* vm) {
+    // pop string pointer off stack
+    char* str = (char*)vm->_data_stack->pop();
+    printf(str);
+    printf("\n");
+}
+
 /**
  * Starts running the VM while it should be active.
  */
-int PicVm::run() {
+int PicVm::run(char** out_err = nullptr) {
     // the return code that should be passed
     int exitCode = 0;
 
-    // set flags
-    bool shouldExit = false;
-    this->active    = true;
-
     // utilities
+    bool shouldExit = false;
+
     auto exitwc = [&] (int code) {
         exitCode   = code;
         shouldExit = true;
     };
 
+    auto exitws = [&] (int code, const char* str) {
+        exitCode   = code;
+        shouldExit = true;
+        *out_err   = *(char**)&str;
+    };
+
+    // check setup before starting
+    if (_file == nullptr) {
+        exitws(VM_EXIT_ERR_BOOT, "no file has been opened");
+        return exitCode;
+    }
+
+    if (this->active) {
+        exitws(VM_EXIT_ERR_BOOT, "the vm is already running");
+        return exitCode;
+    }
+
+    // set flag
+    this->active = true;
+
     /*
      * Main Loop
      */
     while (!shouldExit && this->active) {
-        // advance a position
-        // and get pixel data
-        advance_position();
+        // get pixel data
         int_col pix = get_current_pixel();
+
+        printf("current | x: %d, y: %d, d: %d\n", _x, _y, _dir);
+        printf("current | l: %d, r: %d, g: %d, b: %d\n", pix.i, pix.rgb.r, pix.rgb.g, pix.rgb.b);
 
         // match instruction
         switch (pix.i) {
 
             // op - panic
             case OP_PANIC:
-                exitwc(VM_EXIT_PANIC);
+                exitws(VM_EXIT_PANIC, "panic");
                 break;
 
             // op - exit
@@ -213,7 +331,26 @@ int PicVm::run() {
                 exitwc(VM_EXIT_OK);
                 break;
 
+            // op - pop string and print
+            case OP_PRINT:
+                O_print(this);
+                break;
+
+            // op - push string compact
+            case OP_PUSH_STRING:
+                O_rpush_string(this);
+                break;
+
+            // unknown op: error
+            default:
+                exitws(VM_EXIT_UNKNOWN_OPCODE,
+                       string_format("unknown opcode {} (rgb: {},{},{})\n",
+                                     pix.i, pix.rgb.r, pix.rgb.g, pix.rgb.b));
+
         }
+
+        // advance position
+        advance_position();
     }
 
     // return

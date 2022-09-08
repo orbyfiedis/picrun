@@ -25,9 +25,6 @@ public:
 
 class PicFile {
 private:
-    // the loaded id of this file
-    unsigned long long _id;
-
     // the dimensions
     unsigned int _w;
     unsigned int _h;
@@ -38,9 +35,9 @@ private:
 
 public:
 
-    [[nodiscard]] inline unsigned int flatten(unsigned int x, unsigned int y) const;
+    PicFile(unsigned int w, unsigned int h, int_col* pixels);
 
-    [[nodiscard]] unsigned long long get_id() const;
+    [[nodiscard]] inline unsigned int flatten(unsigned int x, unsigned int y) const;
 
     [[nodiscard]] unsigned int get_width() const;
     [[nodiscard]] unsigned int get_height() const;
@@ -52,6 +49,8 @@ public:
     int_col get_pixel_value(unsigned int x, unsigned int y);
 
 };
+
+PicFile* load_pic_file(unsigned int w, unsigned int h, int_col* pixels);
 
 /*
  * The VM is primarily stack based for control flow,
@@ -69,24 +68,26 @@ public:
 class VmDataStack {
 private:
     // the data stored in the stack
-    long long* _data;
+    long long* _data = nullptr;
     // the index of the top of the stack
-    unsigned int _top;
+    unsigned int _top = 0;
     // the size of the currently allocated block
-    unsigned int _alloc;
+    unsigned int _alloc = 0;
 
 public:
-
-    VmDataStack() {
-        // resize to 1000 elements
-        resize(1000);
-    }
 
     long long* get_data();
     unsigned int get_top_pointer();
     unsigned int get_allocated();
 
     void push(long long data);
+    inline void push_ptr(void* ptr);
+    inline void push_str(char* str);
+    inline void push_long(long long l);
+    inline void push_int(int i);
+    inline void push_float(float f);
+    inline void push_double(double d);
+
     long long pop();
     long long peek();
     // index format -> negative is from top of stack, positive is from bottom
@@ -97,9 +98,10 @@ public:
 };
 
 // vm exit codes
-constexpr int VM_EXIT_OK = 0;
-constexpr int VM_EXIT_PANIC = -999;
-constexpr int VM_EXIT_UNKNOWN_INST = -100;
+constexpr int VM_EXIT_OK             = 0;
+constexpr int VM_EXIT_ERR_BOOT       = -1;
+constexpr int VM_EXIT_PANIC          = -999;
+constexpr int VM_EXIT_UNKNOWN_OPCODE = -100;
 
 // vm class
 class PicVm {
@@ -110,14 +112,16 @@ private:
     // the pointer information
     // (file, x, y, direction)
     PicFile* _file;
-    unsigned int _x;
-    unsigned int _y;
-    unsigned int _dir;
+    unsigned int _x   = 0;
+    unsigned int _y   = 0;
+    unsigned int _dir = 0;
+
+public:
+
+    PicVm();
 
     // the data stack
     VmDataStack* _data_stack;
-
-public:
 
     // if it should be active
     std::atomic_bool active = false;
@@ -125,6 +129,8 @@ public:
     std::unordered_map<unsigned int, PicFunction*> get_functions();
     PicFunction* get_function(unsigned int id);
     PicFunction* get_function(std::string name);
+
+    VmDataStack* get_data_stack();
 
     PicFile* get_file();
     unsigned int get_direction() const;
@@ -139,7 +145,7 @@ public:
     void advance_position();
     int_col get_current_pixel();
 
-    int run();
+    int run(char** out_err);
 
 };
 

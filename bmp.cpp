@@ -14,13 +14,17 @@ int_col* read_bmp_file(const char* file_name,
     // open file input stream
     std::ifstream file = std::ifstream();
     file.open(file_name, std::ios::in);
+    // failed to open file
+    if (file.fail()) {
+        if (out_code) *out_code = -3;
+        return (int_col*) "failed to open file\0";
+    }
+
     if (file.is_open()) {
         // get file size
         file.seekg(0, std::ios::end);
         std::streampos length = file.tellg();
         file.seekg(0, std::ios::beg);
-
-        printf("fspos0: %d\n", (long long)file.tellg());
 
         char* buf_full = new char[length];
 
@@ -38,13 +42,13 @@ int_col* read_bmp_file(const char* file_name,
         if (out_ih->biBitCount != 32) {
             // invalid bit width
             if (out_code) *out_code = -2;
-            return (int_col*) "cannot parse file with non-32 bit pixel width---";
+            return (int_col *) "cannot parse file with non-32 bit pixel width\0";
         }
 
-        // read pixel data
         int_col* buf = (int_col*) buf_full + out_fh->bfOffBits;
         if (out_data_len)
-            *out_data_len = (((long long) length) - off) / 4;
+            *out_data_len = ((long long) length) - off;
+
         printf("fsize: %d, dbufs: %d, biW: %d, biH: %d, biBitCount: %d\n",
                (long long)length, ((long long)length) - off,
                out_ih->biWidth, out_ih->biHeight, out_ih->biBitCount);

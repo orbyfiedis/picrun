@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-typedef uint8_t byte;
+typedef char byte;
 
 // col_rgb
 struct col_rgb {
@@ -19,6 +19,17 @@ struct col_rgb {
 };
 
 union int_col {
+    explicit int_col(unsigned int i1) {
+        i = i1;
+    }
+
+    explicit int_col(byte r1, byte g1, byte b1, byte a1) {
+        rgb.r = r1;
+        rgb.g = g1;
+        rgb.b = b1;
+        rgb.a = a1;
+    }
+
     // the col_rgb value
     col_rgb rgb;
 
