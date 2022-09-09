@@ -268,15 +268,15 @@ static std::string* O_collect_string(PicVm* vm) {
         bool sbreak = false;
 
         int_col pix = vm->get_current_pixel();
-        unsigned int pn = pix.i;
+        col_rgb rgb = pix.rgb;
         for (int i = 0; i < 4; i++) {
-            char c = *(char*)(&pn);
+            char c = (char)(pix.i << i * 8);
+            printf("i: %d, c: '%c' (%d), p.i: %d, 0x%x\n", i, c, c, pix.i, pix.i);
             if (c == 0) {
                 sbreak = true;
                 break;
             }
             chars->push_back(c);
-            pn >>= 8;
         }
 
         if (sbreak)
@@ -319,8 +319,12 @@ static void O_print(PicVm* vm) {
     // pop string pointer off stack
     std::string* str = (std::string*)vm->_data_stack->pop().value;
     if (str == nullptr)
-        std::cout << "null" << std::endl;
-    std::cout << *str << std::endl;
+        std::cout << "null";
+    std::cout << *str;
+}
+
+static void O_inln(PicVm* vm) {
+
 }
 
 static void O_a_add(PicVm* vm) {
@@ -390,6 +394,8 @@ int PicVm::run(char** out_err = nullptr) {
         printf("current | x: %d, y: %d, d: %d\n", _x, _y, _dir);
         printf("current | l: %d, r: %d, g: %d, b: %d\n", pix.i, pix.rgb.r, pix.rgb.g, pix.rgb.b);
 #endif
+
+//        printf("opcode: %d\n", pix.i);
 
         // match instruction
         switch (pix.i) {

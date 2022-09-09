@@ -3,4 +3,4 @@ project(picrun)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(picrun main.cpp bmp.cpp bmp.h defines.h vm.cpp vm.h main.h util.h opcodes.h col.h util.cpp)
+add_executable(picrun main.cpp bmp.cpp bmp.h defines.h vm.cpp vm.h main.h util.h opcodes.h col.h util.cpp vmutil.cpp vmutil.h)

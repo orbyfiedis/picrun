@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-typedef char byte;
+typedef unsigned char byte;
 
 // col_rgb
 struct col_rgb {

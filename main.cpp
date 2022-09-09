@@ -6,11 +6,11 @@
 #include "main.h"
 
 #include "vm.h"
+#include "vmutil.h"
 #include "bmp.h"
 
 #include <cstdio>
 #include <vector>
-#include <iostream>
 #include <bitset>
 
 void print_ma_usage() {
@@ -61,16 +61,22 @@ int main(int argc, char** argv) {
         // vm run test
         //
 
+        int bp = -1;
         buf = (int_col*) calloc(100, sizeof(int_col));
 
-        buf[0] = t(OP_PUSH_INT);
-        buf[1] = t(696969);
-        buf[2] = t(OP_PUSH_INT);
-        buf[3] = t(420);
-        buf[4] = t(OP_A_ADD);
-        buf[5] = t(OP_PTOSTR);
-        buf[6] = t(OP_PRINT);
-        buf[7] = t(OP_EXIT);
+//        buf_push(buf, &bp, t(OP_PUSH_INT)); // push 69696969
+//        buf_push(buf, &bp, t(69696969));
+//        buf_push(buf, &bp, t(OP_PUSH_INT)); // push 42020202
+//        buf_push(buf, &bp, t(42020202));
+//        buf_push(buf, &bp, t(OP_A_ADD)); // arithmetic add -1 & -2
+//        buf_push(buf, &bp, t(OP_PTOSTR)); // primitive to string
+//        buf_push(buf, &bp, t(OP_PRINT)); // print result
+//        buf_push(buf, &bp, t(OP_PUSH_STRING)); // print \n
+//        buf_push(buf, &bp, t_pack_chars("\n"));
+//        buf_push(buf, &bp, t(OP_PRINT));
+
+        bw_print_str(buf, &bp, "HELLO MOTHERFUCKER!");
+        print_char_compound(buf, 16);
 
         // create file
         PicFile* file = load_pic_file(10, 10, buf);
@@ -92,6 +98,7 @@ int main(int argc, char** argv) {
         } else {
             printf("\n");
         }
+        printf("vm data stack top: %d\n", vm->_data_stack->get_top_pointer());
 
         // print usage
         print_ma_usage();

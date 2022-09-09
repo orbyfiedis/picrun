@@ -24,6 +24,7 @@ constexpr int strhash(std::string_view str) {
     for (int i = 0; i < str.length(); i++) {
         hashCode += str[i] * i * PRIME_CONST;
     }
+
     return hashCode;
 }
 
@@ -38,6 +39,12 @@ char* string_format( const std::string& format, Args ... args ) {
     std::unique_ptr<char[]> buf( new char[ size ] );
     std::snprintf( buf.get(), size, format.c_str(), args ... );
     return buf.get();
+}
+
+template <typename T>
+static void buf_push(T* buf, int* ptr, T elem) {
+    *ptr = *ptr + 1;
+    buf[*ptr] = elem;
 }
 
 #endif //PICRUN_UTIL_H
